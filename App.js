@@ -21,23 +21,48 @@ import {
   Colors
 } from 'react-native/Libraries/NewAppScreen';
 
+import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client'
+
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 
-import HomeScreen from './App/Containers/Screen1'
+import HomeScreen from './App/Containers/HomeScreen'
 import Screen2 from './App/Containers/Screen2'
+
+import LoginScreen from './App/Containers/Login'
+import RegisterScreen from './App/Containers/Register'
 
 const Stack = createStackNavigator()
 
+const client = new ApolloClient({
+  uri: 'https://tranquil-hamlet-59487.herokuapp.com/graphql',
+  cache: new InMemoryCache()
+})
+
 const App: () => React$Node = () => {
+  const isLoggedIn = false
   return (
-    <NavigationContainer>
+    <ApolloProvider client={client}>
+      <NavigationContainer>
       <StatusBar barStyle="dark-content" />
-      <Stack.Navigator>
-        <Stack.Screen name='Home Screen' component={HomeScreen} />
-        <Stack.Screen name='Screen2' component={Screen2} />
-      </Stack.Navigator>
+      {
+        isLoggedIn
+        ? (
+          <Stack.Navigator>
+            <Stack.Screen name='HomeScreen' component={HomeScreen} />
+            <Stack.Screen name='Screen2' component={Screen2} />
+          </Stack.Navigator>
+        )
+        : (
+          <Stack.Navigator>
+            <Stack.Screen name='Login' component={LoginScreen} />
+            <Stack.Screen name='Register' component={RegisterScreen} />
+          </Stack.Navigator>
+        )
+      }
     </NavigationContainer>
+    </ApolloProvider>
+    
   );
 };
 
