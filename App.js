@@ -32,6 +32,10 @@ import Screen2 from './App/Containers/Screen2'
 import LoginScreen from './App/Containers/Login'
 import RegisterScreen from './App/Containers/Register'
 
+import { AuthContext } from './App/Contexts/AuthContext'
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 const Stack = createStackNavigator()
 
 const client = new ApolloClient({
@@ -39,29 +43,105 @@ const client = new ApolloClient({
   cache: new InMemoryCache()
 })
 
+  // const getToken = async () => {
+  //   try {
+  //     const token = await AsyncStorage.getItem('token')
+  //     if(token) {
+  //       return token
+  //     } else {
+  //       return null
+  //     }
+  //   } catch (error) {
+  //     console.error(error)
+  //   }
+  // }
+
 const App: () => React$Node = () => {
-  const isLoggedIn = false
-  return (
-    <ApolloProvider client={client}>
-      <NavigationContainer>
-      <StatusBar barStyle="dark-content" />
-      {
-        isLoggedIn
-        ? (
-          <Stack.Navigator>
-            <Stack.Screen name='HomeScreen' component={HomeScreen} />
-            <Stack.Screen name='Screen2' component={Screen2} />
-          </Stack.Navigator>
-        )
-        : (
-          <Stack.Navigator>
-            <Stack.Screen name='Login' component={LoginScreen} />
-            <Stack.Screen name='Register' component={RegisterScreen} />
-          </Stack.Navigator>
-        )
+  const [state, dispatch] = React.useReducer(
+    (prevState, action) => {
+      switch(action.type) {
+        case 'RESTORE_TOKEN':
+          return {
+            ...prevState,
+            userToken: action.token,
+            isLoading: false
+          }
+        case 'SIGN_IN':
+          return {
+            ...prevState,
+            isSignout: false,
+            userToken: action.token
+          }
+        case 'SIGN_OUT':
+          return {
+            ...prevState,
+            isSignout: true,
+            userToken: null
+          }
       }
-    </NavigationContainer>
-    </ApolloProvider>
+    },
+    {
+      isLoading: true,
+      isSignout: false,
+      userToken: null
+    }
+  )
+
+  // Equivalent à un DidMount ou un WillMount
+  React.useEffect(() => {
+    const bootstrapAsync = async () => {
+      let userToken
+      try {
+        userToken = await AsyncStorage.getItem('userToken')
+      } catch (error) {
+        console.error(error)
+      }
+
+      dispatch({type: 'RESTORE_TOKEN', token: userToken})
+    }
+
+    bootstrapAsync()
+  }, [])
+
+  const authContext = React.useMemo(
+    () => ({
+      signIn: async data => {
+        // Mise à jour de l'action SIGN_IN
+        dispatch({ type: 'SIGN_IN', token: data})
+      },
+      signOut: () => dispatch({ type: 'SIGN_OUT'}),
+      signUp: async data => {
+        // Enregistrement
+        dispatch({ type: 'SIGN_IN', token: 'fake-token'})
+      }
+    }),
+    []
+  )
+
+  return (
+    <AuthContext.Provider value={authContext}>
+      <ApolloProvider client={client}>
+          <NavigationContainer>
+            <StatusBar barStyle="dark-content" />
+            {
+              state.userToken
+              ? (
+                <Stack.Navigator>
+                  <Stack.Screen name='HomeScreen' component={HomeScreen} />
+                  <Stack.Screen name='Screen2' component={Screen2} />
+                </Stack.Navigator>
+              )
+              : (
+                <Stack.Navigator>
+                  <Stack.Screen name='Login' component={LoginScreen} />
+                  <Stack.Screen name='Register' component={RegisterScreen} />
+                </Stack.Navigator>
+              )
+            }
+        </NavigationContainer>
+      </ApolloProvider>
+    </AuthContext.Provider>
+    
     
   );
 };

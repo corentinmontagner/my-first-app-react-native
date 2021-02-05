@@ -1,9 +1,12 @@
 import * as React from 'react';
 import { View, Text, TextInput, Button } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { gql, useMutation } from '@apollo/client'
 
 import styles from './Styles/LoginStyle'
+
+import { AuthContext } from '../Contexts/AuthContext'
 
 import { darkTheme } from '../Theme/Color'
 
@@ -21,9 +24,19 @@ const MUTATION_LOGIN = gql`
     }
 `
 
-const Login = () => {
+const storeToken = async (token) => {
+    try {
+        await AsyncStorage.setItem('userToken', token)
+    } catch (error) {
+        console.error(error)
+    }
+}
+
+const Login = ({ navigation }) => {
     const [username, setUsername] = React.useState('coco@gmail.com')
     const [password, setPassword] = React.useState('cocococo')
+
+    const { signIn } = React.useContext(AuthContext);
 
     const [login] = useMutation(MUTATION_LOGIN, {
         variables: {
@@ -33,8 +46,9 @@ const Login = () => {
                 provider: 'local'
             }
         },
-        onCompleted: (result) => {
-            console.log(result)
+        onCompleted: async (result) => {
+            await storeToken(result.login.jwt)
+            signIn(result.login.jwt)
         },
         onError: (error) => {
             console.error(error)
@@ -65,6 +79,10 @@ const Login = () => {
                     console.log(`LOGIN :  ${username} ${password}`)
                     login()
                 }} 
+            />
+            <Button
+                title='Register'
+                onPress={() => navigation.navigate('Register')} 
             />
         </View>
     )
